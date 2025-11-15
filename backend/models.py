@@ -19,3 +19,4 @@ class TranscribeResponse(BaseModel):
     video_title: Optional[str] = None
     duration: Optional[float] = None
     transcription: Optional[str] = None
+    summary: Optional[str] = None

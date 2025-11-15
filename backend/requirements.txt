@@ -4,5 +4,5 @@ yt-dlp==2024.11.4
 python-multipart==0.0.12
 pydantic==2.9.2
 pydantic-settings==2.6.0
-anthropic==0.39.0
+anthropic==0.73.0
 openai==1.55.3
