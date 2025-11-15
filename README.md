@@ -48,13 +48,16 @@ The result: a fast, simple way to turn the content you watch into a personal lib
 - We tried deploying our backend on Heroku, but almost every social media site blocked requests due to bot protections.  
 - We attempted using authenticated cookies, but this still failed.  
 - Due to time constraints, we pivoted and hosted the backend locally instead.
+- We also wanted our flow to be different. We wanted users to be able to click share on whatever social media app they were on and then be able to share it to our app but due to time constraints and a lot of XCode bugs we had to opt for manually inserting the link in our app. 
 
 ---
 
 ## Future Plans — What Would You Build Next With More Time?
 
-With more time, we would evolve the app into a fully AI-powered personal knowledge engine.  
+- With more time, we would evolve the app into a fully AI-powered personal knowledge engine.  
 Our top planned feature was a **RAG system** allowing users to ask questions and receive answers grounded in the videos they've summarized. By embedding the user’s query and searching across stored video notes, the app could act as a personalized “second brain,” making all consumed content searchable and actionable.
+- We would also like to make it so that when you click on share video on any social media app, our app appears to as an option. This would make the flow a lot smoother.
+
 
 ---
 
@@ -63,4 +66,4 @@ Our top planned feature was a **RAG system** allowing users to ask questions and
 - **David:** FastAPI server, audio extraction, transcription, summarization pipeline  
 - **Nathnael:** Supabase setup + backend integration; contributed to the AI summarization pipeline  
 - **Felix:** Login page and home page  
-- **Anthony:** Created the video modal and contributed to home page UI 
+- **Anthony:** Created the video modal and contributed to home page UI
