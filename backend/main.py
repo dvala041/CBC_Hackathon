@@ -82,6 +82,50 @@ def transcribe_audio_with_whisper(audio_file_path: Path) -> str:
         )
 
 
+def summarize_with_claude(transcription: str) -> str:
+    """
+    Summarize transcribed text using Claude 3.5 Sonnet
+    
+    Args:
+        transcription: The transcribed text to summarize
+        
+    Returns:
+        Summary of the transcription
+    """
+    if not anthropic_client:
+        raise HTTPException(
+            status_code=500,
+            detail="Anthropic API key not configured. Please set ANTHROPIC_API_KEY environment variable."
+        )
+    
+    try:
+        # Create a concise summary using Claude
+        message = anthropic_client.messages.create(
+            model="claude-3-5-sonnet-20241022",  # Claude 3.5 Sonnet (latest stable)
+            max_tokens=1024,
+            messages=[{
+                "role": "user",
+                "content": f"""Please provide a concise summary of the following transcription from a short-form video. 
+Focus on the key points, main ideas, and actionable takeaways. Keep it brief and easy to scan.
+
+Transcription:
+{transcription}
+
+Summary:"""
+            }]
+        )
+        
+        # Extract summary from response
+        summary = message.content[0].text
+        return summary
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error summarizing with Claude: {str(e)}"
+        )
+
+
 @app.get("/")
 async def root():
     """Health check endpoint"""
@@ -140,6 +184,9 @@ async def transcribe(request: TranscribeRequest):
             # Transcribe the audio using Whisper
             transcription = transcribe_audio_with_whisper(final_audio_path)
             
+            # Summarize the transcription using Claude 3.5 Sonnet
+            summary = summarize_with_claude(transcription)
+            
             # Clean up: Delete the audio file after successful transcription
             try:
                 final_audio_path.unlink()
@@ -149,11 +196,12 @@ async def transcribe(request: TranscribeRequest):
             
             return TranscribeResponse(
                 success=True,
-                message="Audio extracted and transcribed successfully",
+                message="Audio extracted, transcribed, and summarized successfully",
                 audio_file=None,  # File deleted after transcription
                 video_title=video_title,
                 duration=duration,
-                transcription=transcription
+                transcription=transcription,
+                summary=summary
             )
             
     except yt_dlp.utils.DownloadError as e:
