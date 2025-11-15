@@ -9,7 +9,7 @@ from pydantic import BaseModel, HttpUrl
 class TranscribeRequest(BaseModel):
     """Request model for /transcribe endpoint"""
     url: HttpUrl
-
+    user_id: Optional[str] = None
 
 class TranscribeResponse(BaseModel):
     """Response model for /transcribe endpoint"""
@@ -20,3 +20,5 @@ class TranscribeResponse(BaseModel):
     duration: Optional[float] = None
     transcription: Optional[str] = None
     summary: Optional[str] = None
+    video_id: Optional[int] = None
+    category: Optional[str] = None

@@ -2,7 +2,7 @@
 FastAPI backend for transcribing short-form video content.
 Extracts audio from YouTube Shorts, Instagram Reels, TikTok videos, etc.
 """
-
+from supabase_client import supabase
 import os
 import tempfile
 import uuid
@@ -116,12 +116,12 @@ def summarize_with_claude(transcription: str) -> str:
             messages=[{
                 "role": "user",
                 "content": f"""Please provide a concise summary of the following transcription from a short-form video. 
-Focus on the key points, main ideas, and actionable takeaways. Keep it brief and easy to scan.
+                    Focus on the key points, main ideas, and actionable takeaways. Keep it brief and easy to scan.
 
-Transcription:
-{transcription}
+                    Transcription:
+                    {transcription}
 
-Summary:"""
+                    Summary:"""
             }]
         )
         
@@ -134,6 +134,61 @@ Summary:"""
             status_code=500,
             detail=f"Error summarizing with Claude: {str(e)}"
         )
+
+
+def categorize_with_claude(summary: str) -> str:
+    """
+    Use Claude to assign a simple category based on the summary.
+    Returns one of: fitness, cooking, career, finance, education, entertainment, other, uncategorized
+    
+    Args:
+        summary: The summary text to categorize
+        
+    Returns:
+        Category name as a string
+    """
+    if not anthropic_client:
+        raise HTTPException(
+            status_code=500,
+            detail="Anthropic API key not configured. Please set ANTHROPIC_API_KEY environment variable."
+        )
+    
+    try:
+        # Ask Claude to categorize the content
+        message = anthropic_client.messages.create(
+            model="claude-sonnet-4-5-20250929",  # Claude 3.5 Sonnet
+            max_tokens=50,
+            messages=[{
+                "role": "user",
+                "content": f"""Based on this video summary, assign ONE category from this list:
+                - fitness
+                - cooking
+                - career
+                - finance
+                - education
+                - entertainment
+                - other
+                - uncategorized
+
+                Summary: {summary}
+
+                Respond with ONLY the category name, nothing else."""
+            }]
+        )
+        
+        # Extract and clean the category
+        category = message.content[0].text.strip().lower()
+        
+        # Validate category is one of the allowed values
+        valid_categories = ["fitness", "cooking", "career", "finance", "education", "entertainment", "other", "uncategorized"]
+        if category not in valid_categories:
+            category = "uncategorized"
+        
+        return category
+        
+    except Exception as e:
+        print(f"Error categorizing with Claude: {str(e)}")
+        return "uncategorized"
 
 
 @app.get("/")
@@ -197,13 +252,33 @@ async def transcribe(request: TranscribeRequest):
             # Summarize the transcription using Claude 3.5 Sonnet
             summary = summarize_with_claude(transcription)
             
+            # Categorize the content using Claude
+            backend_category = categorize_with_claude(summary)
+            
+            try:
+                insert_data = {
+                    "user_id": request.user_id,
+                    "video_url": video_url,
+                    "category": backend_category,
+                    "video_title": video_title,
+                    "duration": duration,
+                    "transcription": transcription,
+                    "summary": summary,
+                }
+                result = supabase.table("videos").insert(insert_data).execute()
+                video_id = result.data[0]["id"] if result.data else None
+                print("Saved to supabase")
+
+            except Exception as db_error:
+                print(f"Warning: could not save to Supabase: {db_error}")
+                video_id = None
+                
             # Clean up: Delete the audio file after successful transcription
             try:
                 final_audio_path.unlink()
                 print(f"Deleted audio file: {final_audio_path}")
             except Exception as cleanup_error:
                 print(f"Warning: Could not delete audio file {final_audio_path}: {cleanup_error}")
-            
             return TranscribeResponse(
                 success=True,
                 message="Audio extracted, transcribed, and summarized successfully",
@@ -211,7 +286,9 @@ async def transcribe(request: TranscribeRequest):
                 video_title=video_title,
                 duration=duration,
                 transcription=transcription,
-                summary=summary
+                summary=summary,
+                video_id=video_id,
+                category=backend_category
             )
             
     except yt_dlp.utils.DownloadError as e:
@@ -247,7 +324,25 @@ async def cleanup_audio(filename: str):
             raise HTTPException(status_code=404, detail="File not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting file: {str(e)}")
+from fastapi import Query
+@app.get("/videos")
+async def get_videos(user_id: str = Query(None)):
+    """
+    Get all saved videos for a specific user.
+    This is what your React Native app will call to show the list.
+    """
+    try:
+        query = supabase.table("videos").select("*")
 
+        if user_id:
+            query = query.eq("user_id", user_id)
+
+        result = query.order("created_at", desc=True).execute()
+
+        return {"videos": result.data}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching videos: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
