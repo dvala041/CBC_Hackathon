@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Alert, Animated } from 'react-native';
 import { ChevronRight, Menu } from 'lucide-react-native';
 import VideoSummaryModal from '../../components/VideoSummaryModal';
 
@@ -9,15 +9,9 @@ export default function HomeScreen() {
   const [selectedVideo, setSelectedVideo] = useState<any>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
-  // Mock categories data
-  const categories = [
-    { id: '1', name: 'All', count: 24 },
-    { id: '2', name: 'AI/ML', count: 8 },
-    { id: '3', name: 'Startups', count: 6 },
-    { id: '4', name: 'Health', count: 5 },
-    { id: '5', name: 'Tech', count: 3 },
-    { id: '6', name: 'Finance', count: 2 },
-  ];
+  // Animation value for sidebar
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   // Mock video data with detailed notes
   const videos = [
@@ -26,6 +20,7 @@ export default function HomeScreen() {
       title: 'Top 5 AI Trends in 2024',
       platform: 'YouTube',
       date: '2 days ago',
+      category: 'AI/ML',
       thumbnail: 'https://images.unsplash.com/photo-1480694313141-fce5e697ee25?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8c21hcnRwaG9uZXxlbnwwfHwwfHx8MA%3D%3D',
       summary: 'Exploring the latest developments in artificial intelligence...',
       notes: [
@@ -41,6 +36,7 @@ export default function HomeScreen() {
       title: 'How to Build a Successful Startup',
       platform: 'TikTok',
       date: '1 week ago',
+      category: 'Startups',
       thumbnail: 'https://images.unsplash.com/photo-1543033906-8f2a9f541af9?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8ZXNwb3J0cyUyMHZpcnR1YWwlMjByYWNpbmclMjBldmVudHxlbnwwfHwwfHx8MA%3D%3D',
       summary: 'Essential tips for launching your business idea...',
       notes: [
@@ -56,6 +52,7 @@ export default function HomeScreen() {
       title: 'Morning Yoga Routine for Beginners',
       platform: 'Instagram',
       date: '2 weeks ago',
+      category: 'Health',
       thumbnail: 'https://images.unsplash.com/photo-1517340073101-289191978ae8?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MzR8fDMlMjBncmFwaGljc3xlbnwwfHwwfHx8MA%3D%3D',
       summary: 'A simple 15-minute routine to start your day right...',
       notes: [
@@ -67,6 +64,39 @@ export default function HomeScreen() {
       ]
     },
   ];
+
+  // Calculate category counts dynamically from videos
+  const categoryNames = ['AI/ML', 'Startups', 'Health', 'Tech', 'Finance'];
+  const categories = [
+    { id: '1', name: 'All', count: videos.length },
+    ...categoryNames.map((name, index) => ({
+      id: String(index + 2),
+      name,
+      count: videos.filter(video => video.category === name).length
+    }))
+  ];
+
+  // Filter videos based on selected category
+  const filteredVideos = selectedCategory === 'All'
+    ? videos
+    : videos.filter(video => video.category === selectedCategory);
+
+  // Animate sidebar on state change
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(slideAnim, {
+        toValue: isSidebarOpen ? 0 : -256, // -256px is the sidebar width
+        useNativeDriver: true,
+        tension: 50,
+        friction: 8,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: isSidebarOpen ? 1 : 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [isSidebarOpen]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -118,13 +148,13 @@ export default function HomeScreen() {
                 {selectedCategory} Videos
               </Text>
               <Text className="text-gray-600">
-                {videos.length} summarized videos
+                {filteredVideos.length} summarized videos
               </Text>
             </View>
 
             {/* Video Cards */}
             <View className="gap-4">
-              {videos.map((video) => (
+              {filteredVideos.map((video) => (
                 <TouchableOpacity
                   key={video.id}
                   className="bg-white rounded-xl shadow-sm overflow-hidden"
@@ -161,15 +191,26 @@ export default function HomeScreen() {
         </View>
 
         {/* Sidebar overlay (appears above content, doesn't change layout) */}
-        {isSidebarOpen && (
-          <>
-            {/* Backdrop that closes the sidebar when tapped */}
-            <TouchableOpacity
-              onPress={toggleSidebar}
-              className="absolute inset-0 bg-black/20 z-40"
-            />
+        <>
+          {/* Backdrop that closes the sidebar when tapped */}
+            <Animated.View
+              style={{ opacity: fadeAnim }}
+              className="absolute inset-0 z-40"
+              pointerEvents={isSidebarOpen ? 'auto' : 'none'}
+            >
+              <TouchableOpacity
+                onPress={toggleSidebar}
+                className="flex-1 bg-black/20"
+              />
+            </Animated.View>
 
-            <View className="absolute left-0 top-0 bottom-0 w-64 bg-white border-r border-gray-200 z-50 shadow-lg">
+          <Animated.View
+            style={{
+              transform: [{ translateX: slideAnim }],
+            }}
+            className="absolute left-0 top-0 bottom-0 w-64 bg-white border-r border-gray-200 z-50 shadow-lg"
+            pointerEvents={isSidebarOpen ? 'auto' : 'none'}
+          >
               <ScrollView className="p-4">
                 <Text className="text-lg font-bold text-gray-800 mb-4">Categories</Text>
                 {categories.map((category) => (
@@ -195,9 +236,8 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-            </View>
+            </Animated.View>
           </>
-        )}
       </View>
 
       {/* Video Summary Modal */}
