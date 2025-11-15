@@ -101,7 +101,7 @@ def summarize_with_claude(transcription: str) -> str:
     try:
         # Create a concise summary using Claude
         message = anthropic_client.messages.create(
-            model="claude-3-5-sonnet-20241022",  # Claude 3.5 Sonnet (latest stable)
+            model="claude-sonnet-4-5-20250929",  # Claude 3.5 Sonnet
             max_tokens=1024,
             messages=[{
                 "role": "user",
