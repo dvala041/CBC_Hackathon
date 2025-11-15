@@ -1,5 +1,77 @@
 # Environment variables (secrets)
-**/.env
+# ---------------------------------------------------------------------- #
+# 1. NODE / NPM DEPENDENCIES
+# ---------------------------------------------------------------------- #
+# This is the directory where npm installs project dependencies.
+/node_modules
+# Cache for Node.js modules
+/npm-debug.log
+/yarn-error.log
+/pnpm-debug.log
+
+# npm/pnpm/yarn package lock files (optional, but usually committed)
+# If you want to ignore them, uncomment the following lines:
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# ---------------------------------------------------------------------- #
+# 2. EXPO / REACT NATIVE SPECIFIC
+# ---------------------------------------------------------------------- #
+# Expo-specific files/directories
+/.expo/
+/.expo-shared/
+# Metro bundler cache
+/metro-cache
+# iOS/Android native build/cache directories
+/ios/build/
+/android/build/
+/android/.gradle/
+/android/app/build/
+/android/app/.cxx/
+
+# Assets used only for local development
+/assets/images/*-dev.*
+/assets/images/*-temp.*
+
+# ---------------------------------------------------------------------- #
+# 3. ENVIRONMENT AND SECRETS
+# ---------------------------------------------------------------------- #
+# IMPORTANT: This prevents your secret keys, API tokens, and passwords
+# from being accidentally committed.
+.env
+.env.local
+.env.*.local
+# Other secret files
+*.key
+*.pem
+*.p8
+
+# ---------------------------------------------------------------------- #
+# 4. OPERATING SYSTEM / EDITOR
+# ---------------------------------------------------------------------- #
+# Windows
+Thumbs.db
+ehthumbs.db
+
+# macOS
+.DS_Store
+.localized
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+# Comment out the line above if you want to ignore the entire .vscode folder
+
+# JetBrains/WebStorm/IntelliJ
+.idea/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
 .env
 .env.*
 !.env.example
