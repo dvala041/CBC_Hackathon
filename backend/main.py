@@ -8,16 +8,17 @@ import tempfile
 import uuid
 import base64
 from pathlib import Path
+from datetime import datetime, timezone
 
 import yt_dlp
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from anthropic import Anthropic
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from models import TranscribeRequest, TranscribeResponse
+from models import TranscribeRequest, TranscribeResponse, VideoResponse, VideosListResponse
 
 # Load environment variables from .env file
 load_dotenv()
@@ -100,7 +101,7 @@ def summarize_with_claude(transcription: str) -> str:
         transcription: The transcribed text to summarize
         
     Returns:
-        Summary of the transcription
+        One sentence summary of the transcription
     """
     if not anthropic_client:
         raise HTTPException(
@@ -109,24 +110,24 @@ def summarize_with_claude(transcription: str) -> str:
         )
     
     try:
-        # Create a concise summary using Claude
+        # Create a ONE SENTENCE summary using Claude
         message = anthropic_client.messages.create(
             model="claude-sonnet-4-5-20250929",  # Claude 3.5 Sonnet
-            max_tokens=1024,
+            max_tokens=200,
             messages=[{
                 "role": "user",
-                "content": f"""Please provide a concise summary of the following transcription from a short-form video. 
-                    Focus on the key points, main ideas, and actionable takeaways. Keep it brief and easy to scan.
+                "content": f"""Please provide a ONE SENTENCE summary of the following transcription from a short-form video. 
+                    Make it concise and capture the main topic or theme.
 
                     Transcription:
                     {transcription}
 
-                    Summary:"""
+                    One sentence summary:"""
             }]
         )
         
         # Extract summary from response
-        summary = message.content[0].text
+        summary = message.content[0].text.strip()
         return summary
         
     except Exception as e:
@@ -134,6 +135,47 @@ def summarize_with_claude(transcription: str) -> str:
             status_code=500,
             detail=f"Error summarizing with Claude: {str(e)}"
         )
+
+
+def generate_notes_with_claude(transcription: str) -> list:
+    """
+    Generate detailed bullet point notes from transcription using Claude 3.5 Sonnet
+    
+    Args:
+        transcription: The transcribed text
+        
+    Returns:
+        List of detailed note strings
+    """
+    if not anthropic_client:
+        return ["Transcription available but notes could not be generated."]
+    
+    try:
+        message = anthropic_client.messages.create(
+            model="claude-sonnet-4-5-20250929",
+            max_tokens=1024,
+            messages=[{
+                "role": "user",
+                "content": f"""Create detailed bullet point notes from this video transcription. 
+                    Extract key points, facts, tips, and actionable insights. 
+                    Return ONLY the bullet points, one per line, without bullets or numbers.
+                    Each point should be a complete, informative sentence.
+
+                    Transcription:
+                    {transcription}
+
+                    Notes:"""
+            }]
+        )
+        
+        # Parse response into list of notes
+        notes_text = message.content[0].text.strip()
+        notes = [line.strip() for line in notes_text.split('\n') if line.strip()]
+        return notes[:10]  # Limit to 10 notes max
+        
+    except Exception as e:
+        print(f"Error generating notes with Claude: {str(e)}")
+        return ["Error generating detailed notes."]
 
 
 def categorize_with_claude(summary: str) -> str:
@@ -197,6 +239,55 @@ async def root():
     return {"status": "online", "message": "Video Transcription API"}
 
 
+def get_relative_time(created_at: str) -> str:
+    """Convert ISO timestamp to relative time like '2 days ago'"""
+    try:
+        created = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        now = datetime.now(timezone.utc)
+        diff = now - created
+        
+        seconds = diff.total_seconds()
+        if seconds < 60:
+            return "just now"
+        elif seconds < 3600:
+            minutes = int(seconds / 60)
+            return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
+        elif seconds < 86400:
+            hours = int(seconds / 3600)
+            return f"{hours} hour{'s' if hours != 1 else ''} ago"
+        elif seconds < 604800:
+            days = int(seconds / 86400)
+            return f"{days} day{'s' if days != 1 else ''} ago"
+        elif seconds < 2592000:
+            weeks = int(seconds / 604800)
+            return f"{weeks} week{'s' if weeks != 1 else ''} ago"
+        elif seconds < 31536000:
+            months = int(seconds / 2592000)
+            return f"{months} month{'s' if months != 1 else ''} ago"
+        else:
+            years = int(seconds / 31536000)
+            return f"{years} year{'s' if years != 1 else ''} ago"
+    except:
+        return "unknown"
+
+
+def extract_platform_from_url(url: str) -> str:
+    """Extract platform name from URL"""
+    if not url:
+        return "Unknown"
+    url_lower = url.lower()
+    if "youtube.com" in url_lower or "youtu.be" in url_lower:
+        return "YouTube"
+    elif "tiktok.com" in url_lower:
+        return "TikTok"
+    elif "instagram.com" in url_lower:
+        return "Instagram"
+    elif "facebook.com" in url_lower:
+        return "Facebook"
+    else:
+        return "Unknown"
+
+
 @app.post("/transcribe", response_model=TranscribeResponse)
 async def transcribe(request: TranscribeRequest):
     """
@@ -249,28 +340,43 @@ async def transcribe(request: TranscribeRequest):
             # Transcribe the audio using Whisper
             transcription = transcribe_audio_with_whisper(final_audio_path)
             
-            # Summarize the transcription using Claude 3.5 Sonnet
+            # Summarize the transcription using Claude 3.5 Sonnet (one sentence)
             summary = summarize_with_claude(transcription)
+            # Generate detailed notes using Claude
+            notes = generate_notes_with_claude(transcription)
             
             # Categorize the content using Claude
             backend_category = categorize_with_claude(summary)
             
             try:
+                # Validate user_id is a valid UUID
+                if not request.user_id:
+                    raise ValueError("user_id is required")
+                
+                # Try to parse as UUID to validate
+                import uuid as uuid_lib
+                try:
+                    uuid_lib.UUID(request.user_id)
+                except ValueError:
+                    raise ValueError(f"user_id must be a valid UUID, got: {request.user_id}")
+                
                 insert_data = {
                     "user_id": request.user_id,
-                    "video_url": video_url,
-                    "category": backend_category,
-                    "video_title": video_title,
-                    "duration": duration,
-                    "transcription": transcription,
+                    "title": video_title,
+                    "url": video_url,
                     "summary": summary,
+                    "notes": notes,  # List of strings
+                    "thumbnail": None,  # Optional for now
+                    "transcription": transcription,
+                    "category": backend_category,
+                    "duration": duration,
                 }
                 result = supabase.table("videos").insert(insert_data).execute()
-                video_id = result.data[0]["id"] if result.data else None
-                print("Saved to supabase")
+                video_id = result.data[0]["id"] if result.data else None  # id is the primary key
+                print(f"✅ Saved to supabase with ID: {video_id}")
 
             except Exception as db_error:
-                print(f"Warning: could not save to Supabase: {db_error}")
+                print(f"❌ Warning: could not save to Supabase: {db_error}")
                 video_id = None
                 
             # Clean up: Delete the audio file after successful transcription
@@ -325,11 +431,11 @@ async def cleanup_audio(filename: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting file: {str(e)}")
 from fastapi import Query
-@app.get("/videos")
+@app.get("/videos", response_model=VideosListResponse)
 async def get_videos(user_id: str = Query(None)):
     """
     Get all saved videos for a specific user.
-    This is what your React Native app will call to show the list.
+    Returns formatted data with id, title, platform, date, thumbnail, summary, and notes.
     """
     try:
         query = supabase.table("videos").select("*")
@@ -339,7 +445,30 @@ async def get_videos(user_id: str = Query(None)):
 
         result = query.order("created_at", desc=True).execute()
 
-        return {"videos": result.data}
+        # Transform the data to match frontend format
+        formatted_videos = []
+        for video in result.data:
+            # Parse notes from JSON string if needed
+            notes = video.get("notes", [])
+            if isinstance(notes, str):
+                import json
+                try:
+                    notes = json.loads(notes)
+                except:
+                    notes = [notes] if notes else []
+            
+            formatted_video = {
+                "id": str(video.get("id", "")),  # id is the primary key for each video
+                "title": video.get("title", "Untitled Video"),
+                "platform": extract_platform_from_url(video.get("url", "")),
+                "date": get_relative_time(video.get("created_at", "")),
+                "thumbnail": video.get("thumbnail"),  # Optional, can be None
+                "summary": video.get("summary", "No summary available"),
+                "notes": notes if isinstance(notes, list) else []
+            }
+            formatted_videos.append(formatted_video)
+
+        return {"videos": formatted_videos}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching videos: {str(e)}")
