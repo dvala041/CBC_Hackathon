@@ -6,6 +6,7 @@ export interface Video {
   id: string;
   title: string;
   platform: string;
+  category: string;
   date: string;
   thumbnail?: string;
   summary: string;

@@ -7,12 +7,13 @@ interface VideoSummaryModalProps {
   onClose: () => void;
   video: {
     id?: string;
-    video_title?: string;
+    title?: string;
+    platform?: string;
     category?: string;
-    created_at?: string;
+    date?: string;
     video_url?: string;
     summary?: string;
-    transcription?: string;
+    notes?: string[];
   };
   onOpenOriginal: () => void;
 }
@@ -26,6 +27,20 @@ export default function VideoSummaryModal({
   if (!isVisible) {
     return null;
   }
+
+  // Get color for category badge
+  const getCategoryColor = (category: string) => {
+    const colors: { [key: string]: { bg: string; text: string } } = {
+      'fitness': { bg: 'bg-green-100', text: 'text-green-700' },
+      'cooking': { bg: 'bg-orange-100', text: 'text-orange-700' },
+      'career': { bg: 'bg-purple-100', text: 'text-purple-700' },
+      'finance': { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+      'education': { bg: 'bg-blue-100', text: 'text-blue-700' },
+      'entertainment': { bg: 'bg-pink-100', text: 'text-pink-700' },
+      'other': { bg: 'bg-gray-100', text: 'text-gray-700' },
+    };
+    return colors[category?.toLowerCase()] || { bg: 'bg-blue-100', text: 'text-blue-700' };
+  };
 
   return (
     <View className="absolute inset-0 bg-black/50 flex-1 justify-end z-50">
@@ -42,16 +57,16 @@ export default function VideoSummaryModal({
         {/* Video info header */}
         <View className="mb-4">
           <Text className="text-xl font-bold text-gray-800 mb-2">
-            {video.video_title || 'Untitled Video'}
+            {video.title || 'Untitled Video'}
           </Text>
           <View className="flex-row items-center mb-3">
-            <View className="bg-blue-100 rounded-full px-3 py-1 mr-3">
-              <Text className="text-blue-700 text-sm font-medium">
-                {video.category || 'Uncategorized'}
+            <View className={`${getCategoryColor(video.category || '').bg} rounded-full px-3 py-1 mr-3`}>
+              <Text className={`${getCategoryColor(video.category || '').text} text-sm font-medium`}>
+                {video.category ? video.category.charAt(0).toUpperCase() + video.category.slice(1) : 'Uncategorized'}
               </Text>
             </View>
             <Text className="text-gray-500">
-              {video.created_at ? new Date(video.created_at).toLocaleDateString() : 'Unknown date'}
+              {video.date || 'Unknown date'}
             </Text>
           </View>
         </View>
@@ -66,18 +81,23 @@ export default function VideoSummaryModal({
             <ClipboardList size={20} color="#4B5563" className="mr-2" />
             <Text className="text-gray-800 font-semibold text-base">Summary</Text>
           </View>
-          
+
           <View className="ml-2">
             <Text className="text-gray-700 flex-1 leading-6 mb-4">
               {video.summary || "No summary available"}
             </Text>
-            
-            {video.transcription && (
+
+            {video.notes && video.notes.length > 0 && (
               <>
-                <Text className="text-gray-800 font-semibold text-base mb-2 mt-4">Transcription</Text>
-                <Text className="text-gray-600 flex-1 leading-6">
-                  {video.transcription}
-                </Text>
+                <Text className="text-gray-800 font-semibold text-base mb-2 mt-4">Key Notes</Text>
+                <View className="space-y-2">
+                  {video.notes.map((note, index) => (
+                    <View key={index} className="flex-row mb-2">
+                      <Text className="text-gray-600 mr-2">•</Text>
+                      <Text className="text-gray-600 flex-1 leading-6">{note}</Text>
+                    </View>
+                  ))}
+                </View>
               </>
             )}
           </View>

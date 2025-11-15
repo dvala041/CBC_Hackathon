@@ -30,6 +30,8 @@ export default function HomeScreen() {
         setLoading(true);
         setError(null);
         const fetchedVideos = await fetchUserVideos();
+        console.log('Fetched videos:', fetchedVideos);
+        console.log('Categories in videos:', fetchedVideos.map(v => ({ id: v.id, category: v.category })));
         setVideos(fetchedVideos);
       } catch (err) {
         console.error('Failed to fetch videos:', err);
@@ -57,21 +59,26 @@ export default function HomeScreen() {
     }
   };
 
-  // Calculate category counts dynamically from videos based on platform
-  const uniquePlatforms = Array.from(new Set(videos.map(v => v.platform).filter(Boolean)));
+  // Calculate category counts dynamically from videos
+  const uniqueCategories = Array.from(new Set(videos.map(v => v.category).filter(Boolean)));
+  console.log('Unique categories found:', uniqueCategories);
   const categories = [
     { id: '1', name: 'All', count: videos.length },
-    ...uniquePlatforms.map((name, index) => ({
+    ...uniqueCategories.map((name, index) => ({
       id: String(index + 2),
-      name,
-      count: videos.filter(video => video.platform === name).length
+      name: name.charAt(0).toUpperCase() + name.slice(1), // Capitalize
+      count: videos.filter(video => video.category === name).length
     }))
   ];
+  console.log('Categories with counts:', categories);
 
-  // Filter videos based on selected category (platform)
+  // Filter videos based on selected category
   const filteredVideos = selectedCategory === 'All'
     ? videos
-    : videos.filter(video => video.platform === selectedCategory);
+    : videos.filter(video => {
+        const categoryName = video.category.charAt(0).toUpperCase() + video.category.slice(1);
+        return categoryName === selectedCategory;
+      });
 
   // Animate sidebar on state change
   useEffect(() => {
@@ -92,6 +99,20 @@ export default function HomeScreen() {
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  // Get color for category badge
+  const getCategoryColor = (category: string) => {
+    const colors: { [key: string]: { bg: string; text: string } } = {
+      'fitness': { bg: 'bg-green-100', text: 'text-green-700' },
+      'cooking': { bg: 'bg-orange-100', text: 'text-orange-700' },
+      'career': { bg: 'bg-purple-100', text: 'text-purple-700' },
+      'finance': { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+      'education': { bg: 'bg-blue-100', text: 'text-blue-700' },
+      'entertainment': { bg: 'bg-pink-100', text: 'text-pink-700' },
+      'other': { bg: 'bg-gray-100', text: 'text-gray-700' },
+    };
+    return colors[category?.toLowerCase()] || { bg: 'bg-blue-100', text: 'text-blue-700' };
   };
 
   const handleVideoPress = (video: any) => {
@@ -241,14 +262,12 @@ export default function HomeScreen() {
                         </Text>
 
                         <View className="flex-row items-center mb-2">
-                          <View className="bg-blue-100 rounded-full px-2 py-1 mr-2">
-                            <Text className="text-blue-700 text-xs font-medium">
-                              {video.platform || 'Unknown'}
+                          <View className={`${getCategoryColor(video.category).bg} rounded-full px-2 py-1 mr-2`}>
+                            <Text className={`${getCategoryColor(video.category).text} text-xs font-medium`}>
+                              {video.category ? video.category.charAt(0).toUpperCase() + video.category.slice(1) : 'Uncategorized'}
                             </Text>
                           </View>
-                          <Text className="text-gray-500 text-sm">
-                            {video.date}
-                          </Text>
+                          <Text className="text-gray-500 text-sm">{video.date}</Text>
                         </View>
 
                         <Text className="text-gray-600 text-sm" numberOfLines={2}>
@@ -290,28 +309,39 @@ export default function HomeScreen() {
           >
               <ScrollView className="p-4">
                 <Text className="text-lg font-bold text-gray-800 mb-4">Categories</Text>
-                {categories.map((category) => (
-                  <TouchableOpacity
-                    key={category.id}
-                    className={`flex-row items-center justify-between py-3 px-2 rounded-lg ${
-                      selectedCategory === category.name ? 'bg-blue-50' : ''
-                    }`}
-                    onPress={() => setSelectedCategory(category.name)}
-                  >
-                    <Text
-                      className={`${
-                        selectedCategory === category.name
-                          ? 'text-blue-600 font-semibold'
-                          : 'text-gray-700'
+                {categories.map((category) => {
+                  const isAll = category.name === 'All';
+                  const categoryColor = isAll ? { bg: 'bg-blue-50', text: 'text-blue-600' } : getCategoryColor(category.name.toLowerCase());
+                  const isSelected = selectedCategory === category.name;
+
+                  return (
+                    <TouchableOpacity
+                      key={category.id}
+                      className={`flex-row items-center justify-between py-3 px-2 rounded-lg ${
+                        isSelected ? categoryColor.bg : ''
                       }`}
+                      onPress={() => setSelectedCategory(category.name)}
                     >
-                      {category.name}
-                    </Text>
-                    <View className="bg-gray-100 rounded-full px-2 py-1">
-                      <Text className="text-gray-600 text-xs">{category.count}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                      <View className="flex-row items-center">
+                        {!isAll && (
+                          <View className={`w-2 h-2 rounded-full ${categoryColor.bg.replace('100', '500')} mr-2`} />
+                        )}
+                        <Text
+                          className={`${
+                            isSelected
+                              ? `${categoryColor.text} font-semibold`
+                              : 'text-gray-700'
+                          }`}
+                        >
+                          {category.name}
+                        </Text>
+                      </View>
+                      <View className="bg-gray-100 rounded-full px-2 py-1">
+                        <Text className="text-gray-600 text-xs">{category.count}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
               </ScrollView>
             </Animated.View>
           </>

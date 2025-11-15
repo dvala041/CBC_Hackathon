@@ -461,6 +461,7 @@ async def get_videos(user_id: str = Query(None)):
                 "id": str(video.get("id", "")),  # id is the primary key for each video
                 "title": video.get("title", "Untitled Video"),
                 "platform": extract_platform_from_url(video.get("url", "")),
+                "category": video.get("category", "uncategorized"),  # Category from database
                 "date": get_relative_time(video.get("created_at", "")),
                 "thumbnail": video.get("thumbnail"),  # Optional, can be None
                 "summary": video.get("summary", "No summary available"),
