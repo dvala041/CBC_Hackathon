@@ -1,54 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from '../lib/supabase';
-
-WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const redirectUri = makeRedirectUri({
-    scheme: 'frontend'
-  });
+  useEffect(() => {
+    // Check if user is already signed in
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        router.replace('/(tabs)');
+      }
+    });
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    redirectUri: redirectUri,
-  });
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        router.replace('/(tabs)');
+      }
+    });
 
-  const handleGoogleSignIn = React.useCallback(async (idToken: string) => {
+    return () => subscription.unsubscribe();
+  }, [router]);
+
+  const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithIdToken({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        token: idToken,
+        options: {
+          redirectTo: 'frontend://login',
+          skipBrowserRedirect: false,
+        },
       });
 
       if (error) throw error;
-
-      if (data.session) {
-        router.replace('/(tabs)');
-      }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to sign in with Google');
-    } finally {
       setIsLoading(false);
     }
-  }, [router]);
-
-  React.useEffect(() => {
-    if (response?.type === 'success') {
-      const { id_token } = response.params;
-      handleGoogleSignIn(id_token);
-    }
-  }, [response, handleGoogleSignIn]);
+  };
 
   return (
     <View className="flex-1 bg-white items-center justify-center px-6">
@@ -72,8 +66,8 @@ export default function LoginScreen() {
       {/* Google Sign In Button */}
       <TouchableOpacity 
         className="flex-row items-center justify-center bg-white border border-gray-300 rounded-xl py-4 px-6 w-full max-w-xs shadow-sm"
-        onPress={() => promptAsync()}
-        disabled={isLoading || !request}
+        onPress={handleGoogleSignIn}
+        disabled={isLoading}
       >
         {isLoading ? (
           <ActivityIndicator size="small" color="#4285F4" />
