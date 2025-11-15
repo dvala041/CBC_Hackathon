@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
-import { X, Play } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { X, Play, ClipboardList } from 'lucide-react-native';
 
 interface VideoSummaryModalProps {
   isVisible: boolean;
@@ -42,24 +42,26 @@ export default function VideoSummaryModal({
         {/* Video info header */}
         <View className="mb-4">
           <Text className="text-xl font-bold text-gray-800 mb-2">{video.title}</Text>
-          
           <View className="flex-row items-center mb-3">
             <View className="bg-blue-100 rounded-full px-3 py-1 mr-3">
               <Text className="text-blue-700 text-sm font-medium">{video.platform}</Text>
             </View>
             <Text className="text-gray-500">{video.date}</Text>
           </View>
-          
-          <Image 
-            source={{ uri: video.thumbnail }} 
-            className="w-full h-48 rounded-xl mb-4"
-            resizeMode="cover"
-          />
         </View>
+
+        {/* Divider */}
+        <View className="border-b border-gray-200 mb-4" />
 
         {/* Summary content */}
         <ScrollView className="flex-1 mb-4">
-          <Text className="text-gray-800 font-semibold mb-3">Key Points:</Text>
+          {/* Header with Icon */}
+          <View className="flex-row items-center mb-3">
+            <ClipboardList size={20} color="#4B5563" className="mr-2" />
+            <Text className="text-gray-800 font-semibold text-base">
+              {video.notes && video.notes.length > 0 ? "Key Points" : "Summary"}
+            </Text>
+          </View>
           
           {video.notes && video.notes.length > 0 ? (
             <View className="ml-2">
@@ -72,10 +74,9 @@ export default function VideoSummaryModal({
             </View>
           ) : (
             <View className="ml-2">
-              <View className="flex-row mb-2">
-                <Text className="text-gray-700 mr-2">•</Text>
-                <Text className="text-gray-700 flex-1">{video.summary || "No summary available"}</Text>
-              </View>
+              <Text className="text-gray-700 flex-1 leading-6">
+                {video.summary || "No summary available"}
+              </Text>
             </View>
           )}
         </ScrollView>
