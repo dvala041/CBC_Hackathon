@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Image, ScrollView, SafeAreaView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Alert } from 'react-native';
 import { ChevronRight, Menu, Search, Plus } from 'lucide-react-native';
 import VideoSummaryModal from '../../components/VideoSummaryModal';
 
@@ -146,9 +146,6 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               ))}
               
-              <TouchableOpacity className="flex-row items-center mt-6 py-3 px-2">
-                <Text className="text-blue-600 font-medium">+ Add Category</Text>
-              </TouchableOpacity>
             </ScrollView>
           </View>
         )}
@@ -174,10 +171,6 @@ export default function HomeScreen() {
                   onPress={() => handleVideoPress(video)}
                 >
                   <View className="flex-row">
-                    <Image
-                      source={{ uri: video.thumbnail }}
-                      className="w-24 h-24"
-                    />
                     <View className="flex-1 p-3">
                       <Text className="font-semibold text-gray-800 mb-1" numberOfLines={2}>
                         {video.title}
@@ -215,11 +208,6 @@ export default function HomeScreen() {
         video={selectedVideo || {}}
         onOpenOriginal={handleOpenOriginal}
       />
-
-      {/* Floating Action Button */}
-      <TouchableOpacity className="absolute bottom-6 right-6 w-14 h-14 bg-blue-500 rounded-full items-center justify-center shadow-lg">
-        <Plus size={24} color="white" />
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
