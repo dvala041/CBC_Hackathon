@@ -12,6 +12,7 @@ from pathlib import Path
 import yt_dlp
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from anthropic import Anthropic
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -25,6 +26,15 @@ app = FastAPI(
     title="Video Transcription API",
     description="Extract audio from short-form videos for transcription",
     version="0.1.0"
+)
+
+# Allow cross-origin requests (development-friendly defaults)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Create temp directory for audio files
