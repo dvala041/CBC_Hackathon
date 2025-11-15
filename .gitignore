@@ -1,3 +1,4 @@
+# Environment variables (secrets)
 # ---------------------------------------------------------------------- #
 # 1. NODE / NPM DEPENDENCIES
 # ---------------------------------------------------------------------- #
@@ -71,3 +72,31 @@ ehthumbs.db
 # Sublime Text
 *.sublime-project
 *.sublime-workspace
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Temporary audio files
+backend/temp_audio/
+temp_audio/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
