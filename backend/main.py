@@ -106,12 +106,12 @@ def summarize_with_claude(transcription: str) -> str:
             messages=[{
                 "role": "user",
                 "content": f"""Please provide a concise summary of the following transcription from a short-form video. 
-Focus on the key points, main ideas, and actionable takeaways. Keep it brief and easy to scan.
+                    Focus on the key points, main ideas, and actionable takeaways. Keep it brief and easy to scan.
 
-Transcription:
-{transcription}
+                    Transcription:
+                    {transcription}
 
-Summary:"""
+                    Summary:"""
             }]
         )
         
