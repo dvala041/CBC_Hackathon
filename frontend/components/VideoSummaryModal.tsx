@@ -6,13 +6,13 @@ interface VideoSummaryModalProps {
   isVisible: boolean;
   onClose: () => void;
   video: {
-    id: string;
-    title: string;
-    platform: string;
-    date: string;
-    thumbnail: string;
-    summary: string;
-    notes: string[];
+    id?: string;
+    video_title?: string;
+    category?: string;
+    created_at?: string;
+    video_url?: string;
+    summary?: string;
+    transcription?: string;
   };
   onOpenOriginal: () => void;
 }
@@ -41,12 +41,18 @@ export default function VideoSummaryModal({
 
         {/* Video info header */}
         <View className="mb-4">
-          <Text className="text-xl font-bold text-gray-800 mb-2">{video.title}</Text>
+          <Text className="text-xl font-bold text-gray-800 mb-2">
+            {video.video_title || 'Untitled Video'}
+          </Text>
           <View className="flex-row items-center mb-3">
             <View className="bg-blue-100 rounded-full px-3 py-1 mr-3">
-              <Text className="text-blue-700 text-sm font-medium">{video.platform}</Text>
+              <Text className="text-blue-700 text-sm font-medium">
+                {video.category || 'Uncategorized'}
+              </Text>
             </View>
-            <Text className="text-gray-500">{video.date}</Text>
+            <Text className="text-gray-500">
+              {video.created_at ? new Date(video.created_at).toLocaleDateString() : 'Unknown date'}
+            </Text>
           </View>
         </View>
 
@@ -58,27 +64,23 @@ export default function VideoSummaryModal({
           {/* Header with Icon */}
           <View className="flex-row items-center mb-3">
             <ClipboardList size={20} color="#4B5563" className="mr-2" />
-            <Text className="text-gray-800 font-semibold text-base">
-              {video.notes && video.notes.length > 0 ? "Key Points" : "Summary"}
-            </Text>
+            <Text className="text-gray-800 font-semibold text-base">Summary</Text>
           </View>
           
-          {video.notes && video.notes.length > 0 ? (
-            <View className="ml-2">
-              {video.notes.map((note, index) => (
-                <View key={index} className="flex-row mb-2">
-                  <Text className="text-gray-700 mr-2">•</Text>
-                  <Text className="text-gray-700 flex-1">{note}</Text>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <View className="ml-2">
-              <Text className="text-gray-700 flex-1 leading-6">
-                {video.summary || "No summary available"}
-              </Text>
-            </View>
-          )}
+          <View className="ml-2">
+            <Text className="text-gray-700 flex-1 leading-6 mb-4">
+              {video.summary || "No summary available"}
+            </Text>
+            
+            {video.transcription && (
+              <>
+                <Text className="text-gray-800 font-semibold text-base mb-2 mt-4">Transcription</Text>
+                <Text className="text-gray-600 flex-1 leading-6">
+                  {video.transcription}
+                </Text>
+              </>
+            )}
+          </View>
         </ScrollView>
 
         {/* Action button */}

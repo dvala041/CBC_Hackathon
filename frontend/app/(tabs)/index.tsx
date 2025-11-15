@@ -1,75 +1,46 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Alert, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Alert, Animated, ActivityIndicator, Linking } from 'react-native';
 import { ChevronRight, Menu } from 'lucide-react-native';
 import VideoSummaryModal from '../../components/VideoSummaryModal';
+import { fetchUserVideos, Video } from '../../lib/api';
 
 export default function HomeScreen() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedVideo, setSelectedVideo] = useState<any>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Animation value for sidebar
   const slideAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  // Mock video data with detailed notes
-  const videos = [
-    {
-      id: '1',
-      title: 'Top 5 AI Trends in 2024',
-      platform: 'YouTube',
-      date: '2 days ago',
-      category: 'AI/ML',
-      thumbnail: 'https://images.unsplash.com/photo-1480694313141-fce5e697ee25?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8c21hcnRwaG9uZXxlbnwwfHwwfHx8MA%3D%3D',
-      summary: 'Exploring the latest developments in artificial intelligence...',
-      notes: [
-        'Generative AI continues to evolve with multimodal capabilities',
-        'Large Language Models are becoming more efficient and specialized',
-        'AI agents are starting to automate complex workflows',
-        'Ethical AI and regulation remain key concerns for 2024',
-        'Edge computing is enabling faster, more private AI processing'
-      ]
-    },
-    {
-      id: '2',
-      title: 'How to Build a Successful Startup',
-      platform: 'TikTok',
-      date: '1 week ago',
-      category: 'Startups',
-      thumbnail: 'https://images.unsplash.com/photo-1543033906-8f2a9f541af9?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8ZXNwb3J0cyUyMHZpcnR1YWwlMjByYWNpbmclMjBldmVudHxlbnwwfHwwfHx8MA%3D%3D',
-      summary: 'Essential tips for launching your business idea...',
-      notes: [
-        'Validate your idea before investing heavily in development',
-        'Focus on solving a real problem for your target audience',
-        'Build a minimum viable product to test market fit',
-        'Network with mentors and potential investors early',
-        'Plan for scaling from the beginning but stay lean initially'
-      ]
-    },
-    {
-      id: '3',
-      title: 'Morning Yoga Routine for Beginners',
-      platform: 'Instagram',
-      date: '2 weeks ago',
-      category: 'Health',
-      thumbnail: 'https://images.unsplash.com/photo-1517340073101-289191978ae8?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MzR8fDMlMjBncmFwaGljc3xlbnwwfHwwfHx8MA%3D%3D',
-      summary: 'A simple 15-minute routine to start your day right...',
-      notes: [
-        'Begin with 5 minutes of deep breathing to center yourself',
-        'Cat-Cow stretch warms up the spine effectively',
-        'Downward dog strengthens arms and legs simultaneously',
-        'Warrior poses build confidence and balance',
-        'Finish with 2 minutes of meditation for mental clarity'
-      ]
-    },
-  ];
+  // Fetch videos from backend
+  useEffect(() => {
+    const loadVideos = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const fetchedVideos = await fetchUserVideos();
+        setVideos(fetchedVideos);
+      } catch (err) {
+        console.error('Failed to fetch videos:', err);
+        setError('Failed to load videos. Make sure the backend is running on http://localhost:8000');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadVideos();
+  }, []);
 
   // Calculate category counts dynamically from videos
-  const categoryNames = ['AI/ML', 'Startups', 'Health', 'Tech', 'Finance'];
+  const uniqueCategories = Array.from(new Set(videos.map(v => v.category).filter(Boolean)));
   const categories = [
     { id: '1', name: 'All', count: videos.length },
-    ...categoryNames.map((name, index) => ({
+    ...uniqueCategories.map((name, index) => ({
       id: String(index + 2),
       name,
       count: videos.filter(video => video.category === name).length
@@ -112,16 +83,21 @@ export default function HomeScreen() {
     setSelectedVideo(null);
   };
 
-  const handleOpenOriginal = () => {
-    if (selectedVideo) {
-      Alert.alert(
-        'Open Video',
-        `Opening ${selectedVideo.platform} video: ${selectedVideo.title}`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Open', onPress: () => console.log('Opening original video') }
-        ]
-      );
+  const handleOpenOriginal = async () => {
+    if (selectedVideo?.video_url) {
+      try {
+        const supported = await Linking.canOpenURL(selectedVideo.video_url);
+        if (supported) {
+          await Linking.openURL(selectedVideo.video_url);
+        } else {
+          Alert.alert('Error', `Cannot open URL: ${selectedVideo.video_url}`);
+        }
+      } catch (error) {
+        Alert.alert('Error', 'Failed to open video');
+        console.error('Error opening URL:', error);
+      }
+    } else {
+      Alert.alert('Error', 'Video URL not available');
     }
   };
 
@@ -152,41 +128,70 @@ export default function HomeScreen() {
               </Text>
             </View>
 
+            {/* Loading State */}
+            {loading && (
+              <View className="flex-1 items-center justify-center py-12">
+                <ActivityIndicator size="large" color="#2196F3" />
+                <Text className="text-gray-600 mt-4">Loading videos...</Text>
+              </View>
+            )}
+
+            {/* Error State */}
+            {error && (
+              <View className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <Text className="text-red-700 font-medium mb-1">Error</Text>
+                <Text className="text-red-600 text-sm">{error}</Text>
+              </View>
+            )}
+
+            {/* Empty State */}
+            {!loading && !error && filteredVideos.length === 0 && (
+              <View className="items-center justify-center py-12">
+                <Text className="text-gray-500 text-center">
+                  No videos found{selectedCategory !== 'All' ? ` in ${selectedCategory}` : ''}
+                </Text>
+              </View>
+            )}
+
             {/* Video Cards */}
-            <View className="gap-4">
-              {filteredVideos.map((video) => (
-                <TouchableOpacity
-                  key={video.id}
-                  className="bg-white rounded-xl shadow-sm overflow-hidden"
-                  onPress={() => handleVideoPress(video)}
-                >
-                  <View className="flex-row">
-                    <View className="flex-1 p-3">
-                      <Text className="font-semibold text-gray-800 mb-1" numberOfLines={2}>
-                        {video.title}
-                      </Text>
-                      
-                      <View className="flex-row items-center mb-2">
-                        <View className="bg-blue-100 rounded-full px-2 py-1 mr-2">
-                          <Text className="text-blue-700 text-xs font-medium">
-                            {video.platform}
+            {!loading && !error && filteredVideos.length > 0 && (
+              <View className="gap-4">
+                {filteredVideos.map((video) => (
+                  <TouchableOpacity
+                    key={video.id}
+                    className="bg-white rounded-xl shadow-sm overflow-hidden"
+                    onPress={() => handleVideoPress(video)}
+                  >
+                    <View className="flex-row">
+                      <View className="flex-1 p-3">
+                        <Text className="font-semibold text-gray-800 mb-1" numberOfLines={2}>
+                          {video.video_title || 'Untitled Video'}
+                        </Text>
+                        
+                        <View className="flex-row items-center mb-2">
+                          <View className="bg-blue-100 rounded-full px-2 py-1 mr-2">
+                            <Text className="text-blue-700 text-xs font-medium">
+                              {video.category || 'Uncategorized'}
+                            </Text>
+                          </View>
+                          <Text className="text-gray-500 text-sm">
+                            {new Date(video.created_at).toLocaleDateString()}
                           </Text>
                         </View>
-                        <Text className="text-gray-500 text-sm">{video.date}</Text>
+                        
+                        <Text className="text-gray-600 text-sm" numberOfLines={2}>
+                          {video.summary || 'No summary available'}
+                        </Text>
                       </View>
                       
-                      <Text className="text-gray-600 text-sm" numberOfLines={2}>
-                        {video.summary}
-                      </Text>
+                      <View className="justify-center pr-3">
+                        <ChevronRight size={20} color="#757575" />
+                      </View>
                     </View>
-                    
-                    <View className="justify-center pr-3">
-                      <ChevronRight size={20} color="#757575" />
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </ScrollView>
         </View>
 
