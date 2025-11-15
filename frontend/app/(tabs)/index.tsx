@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Image, ScrollView, SafeAreaView, Alert } from 'react-native';
 import { ChevronRight, Menu, Search, Plus } from 'lucide-react-native';
-import VideoSummaryModal from '../components/VideoSummaryModal';
+import VideoSummaryModal from '../../components/VideoSummaryModal';
 
 export default function HomeScreen() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
