@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Alert, Animated, ActivityIndicator, Linking } from 'react-native';
-import { ChevronRight, Menu } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Alert, Animated, ActivityIndicator, Linking, Modal, TextInput, RefreshControl } from 'react-native';
+import { ChevronRight, Menu, Plus, X } from 'lucide-react-native';
 import VideoSummaryModal from '../../components/VideoSummaryModal';
-import { fetchUserVideos, Video } from '../../lib/api';
+import { fetchUserVideos, Video, transcribeVideo } from '../../lib/api';
 
 export default function HomeScreen() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -12,6 +12,12 @@ export default function HomeScreen() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Add Video Modal State
+  const [isAddVideoModalVisible, setIsAddVideoModalVisible] = useState(false);
+  const [videoUrl, setVideoUrl] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Animation value for sidebar
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -36,21 +42,36 @@ export default function HomeScreen() {
     loadVideos();
   }, []);
 
-  // Calculate category counts dynamically from videos
-  const uniqueCategories = Array.from(new Set(videos.map(v => v.category).filter(Boolean)));
+  // Handle pull-to-refresh
+  const onRefresh = async () => {
+    try {
+      setRefreshing(true);
+      setError(null);
+      const fetchedVideos = await fetchUserVideos();
+      setVideos(fetchedVideos);
+    } catch (err) {
+      console.error('Failed to refresh videos:', err);
+      setError('Failed to refresh videos. Make sure the backend is running.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Calculate category counts dynamically from videos based on platform
+  const uniquePlatforms = Array.from(new Set(videos.map(v => v.platform).filter(Boolean)));
   const categories = [
     { id: '1', name: 'All', count: videos.length },
-    ...uniqueCategories.map((name, index) => ({
+    ...uniquePlatforms.map((name, index) => ({
       id: String(index + 2),
       name,
-      count: videos.filter(video => video.category === name).length
+      count: videos.filter(video => video.platform === name).length
     }))
   ];
 
-  // Filter videos based on selected category
+  // Filter videos based on selected category (platform)
   const filteredVideos = selectedCategory === 'All'
     ? videos
-    : videos.filter(video => video.category === selectedCategory);
+    : videos.filter(video => video.platform === selectedCategory);
 
   // Animate sidebar on state change
   useEffect(() => {
@@ -101,6 +122,42 @@ export default function HomeScreen() {
     }
   };
 
+  const handleSubmitVideo = async () => {
+    if (!videoUrl.trim()) {
+      Alert.alert('Error', 'Please enter a video URL');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await transcribeVideo(videoUrl);
+
+      Alert.alert(
+        'Success',
+        'Video submitted for processing! It will appear in your list shortly.',
+        [{ text: 'OK', onPress: () => {
+          setIsAddVideoModalVisible(false);
+          setVideoUrl('');
+          // Refresh the video list
+          const loadVideos = async () => {
+            try {
+              const fetchedVideos = await fetchUserVideos();
+              setVideos(fetchedVideos);
+            } catch (err) {
+              console.error('Failed to refresh videos:', err);
+            }
+          };
+          loadVideos();
+        }}]
+      );
+    } catch (error) {
+      console.error('Error submitting video:', error);
+      Alert.alert('Error', 'Failed to submit video. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       {/* Top Navigation Bar */}
@@ -111,14 +168,29 @@ export default function HomeScreen() {
           </TouchableOpacity>
           <Text className="text-xl font-bold text-gray-800">ReelSummarizer</Text>
         </View>
-        
-        <View />
+
+        <TouchableOpacity
+          onPress={() => setIsAddVideoModalVisible(true)}
+          className="bg-blue-500 rounded-full p-2"
+        >
+          <Plus size={20} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
 
       <View className="flex-1 relative">
         {/* Main Content Area (fills available width) */}
         <View className="flex-1">
-          <ScrollView className="p-4">
+          <ScrollView
+            className="p-4"
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#2196F3']}
+                tintColor="#2196F3"
+              />
+            }
+          >
             <View className="mb-6">
               <Text className="text-2xl font-bold text-gray-800 mb-2">
                 {selectedCategory} Videos
@@ -165,20 +237,20 @@ export default function HomeScreen() {
                     <View className="flex-row">
                       <View className="flex-1 p-3">
                         <Text className="font-semibold text-gray-800 mb-1" numberOfLines={2}>
-                          {video.video_title || 'Untitled Video'}
+                          {video.title || 'Untitled Video'}
                         </Text>
-                        
+
                         <View className="flex-row items-center mb-2">
                           <View className="bg-blue-100 rounded-full px-2 py-1 mr-2">
                             <Text className="text-blue-700 text-xs font-medium">
-                              {video.category || 'Uncategorized'}
+                              {video.platform || 'Unknown'}
                             </Text>
                           </View>
                           <Text className="text-gray-500 text-sm">
-                            {new Date(video.created_at).toLocaleDateString()}
+                            {video.date}
                           </Text>
                         </View>
-                        
+
                         <Text className="text-gray-600 text-sm" numberOfLines={2}>
                           {video.summary || 'No summary available'}
                         </Text>
@@ -252,6 +324,81 @@ export default function HomeScreen() {
         video={selectedVideo || {}}
         onOpenOriginal={handleOpenOriginal}
       />
+
+      {/* Add Video Modal */}
+      <Modal
+        visible={isAddVideoModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsAddVideoModalVisible(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-center items-center px-4">
+          <View className="bg-white rounded-2xl p-6 w-full max-w-md">
+            {/* Header */}
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-xl font-bold text-gray-800">Add New Video</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setIsAddVideoModalVisible(false);
+                  setVideoUrl('');
+                }}
+                className="p-1"
+              >
+                <X size={24} color="#757575" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Description */}
+            <Text className="text-gray-600 mb-4">
+              Paste a link to a video from YouTube, TikTok, or Instagram to get it summarized.
+            </Text>
+
+            {/* Input Field */}
+            <View className="mb-6">
+              <Text className="text-sm font-medium text-gray-700 mb-2">Video URL</Text>
+              <TextInput
+                value={videoUrl}
+                onChangeText={setVideoUrl}
+                placeholder="https://youtube.com/watch?v=..."
+                placeholderTextColor="#9CA3AF"
+                className="border border-gray-300 rounded-lg px-4 py-3 text-gray-800"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+                editable={!isSubmitting}
+              />
+            </View>
+
+            {/* Buttons */}
+            <View className="flex-row gap-3">
+              <TouchableOpacity
+                onPress={() => {
+                  setIsAddVideoModalVisible(false);
+                  setVideoUrl('');
+                }}
+                className="flex-1 bg-gray-100 rounded-lg py-3 items-center"
+                disabled={isSubmitting}
+              >
+                <Text className="text-gray-700 font-semibold">Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleSubmitVideo}
+                className={`flex-1 rounded-lg py-3 items-center ${
+                  isSubmitting ? 'bg-blue-300' : 'bg-blue-500'
+                }`}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text className="text-white font-semibold">Submit</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

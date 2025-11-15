@@ -464,7 +464,8 @@ async def get_videos(user_id: str = Query(None)):
                 "date": get_relative_time(video.get("created_at", "")),
                 "thumbnail": video.get("thumbnail"),  # Optional, can be None
                 "summary": video.get("summary", "No summary available"),
-                "notes": notes if isinstance(notes, list) else []
+                "notes": notes if isinstance(notes, list) else [],
+                "video_url": video.get("url", "")  # Include the original URL
             }
             formatted_videos.append(formatted_video)
 

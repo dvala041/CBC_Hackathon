@@ -3,15 +3,14 @@ import { HARDCODED_USER_ID } from './auth';
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.48.112.8:8000';
 
 export interface Video {
-  id: number;
-  user_id: string;
-  video_url: string;
-  video_title: string;
-  category: string;
-  duration: number;
-  transcription: string;
+  id: string;
+  title: string;
+  platform: string;
+  date: string;
+  thumbnail?: string;
   summary: string;
-  created_at: string;
+  notes: string[];
+  video_url: string;
 }
 
 export interface FetchVideosResponse {
