@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Alert } from 'react-native';
-import { ChevronRight, Menu, Search, Plus } from 'lucide-react-native';
+import { ChevronRight, Menu } from 'lucide-react-native';
 import VideoSummaryModal from '../../components/VideoSummaryModal';
 
 export default function HomeScreen() {
@@ -106,51 +106,11 @@ export default function HomeScreen() {
           <Text className="text-xl font-bold text-gray-800">ReelSummarizer</Text>
         </View>
         
-        <View className="flex-row items-center">
-          <TouchableOpacity className="mr-4">
-            <Search size={24} color="#757575" />
-          </TouchableOpacity>
-          <TouchableOpacity>
-            <Plus size={24} color="#2196F3" />
-          </TouchableOpacity>
-        </View>
+        <View />
       </View>
 
-      <View className="flex-1 flex-row">
-        {/* Collapsible Sidebar */}
-        {isSidebarOpen && (
-          <View className="w-64 bg-white border-r border-gray-200">
-            <ScrollView className="p-4">
-              <Text className="text-lg font-bold text-gray-800 mb-4">Categories</Text>
-              
-              {categories.map((category) => (
-                <TouchableOpacity
-                  key={category.id}
-                  className={`flex-row items-center justify-between py-3 px-2 rounded-lg ${
-                    selectedCategory === category.name ? 'bg-blue-50' : ''
-                  }`}
-                  onPress={() => setSelectedCategory(category.name)}
-                >
-                  <Text
-                    className={`${
-                      selectedCategory === category.name
-                        ? 'text-blue-600 font-semibold'
-                        : 'text-gray-700'
-                    }`}
-                  >
-                    {category.name}
-                  </Text>
-                  <View className="bg-gray-100 rounded-full px-2 py-1">
-                    <Text className="text-gray-600 text-xs">{category.count}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-              
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Main Content Area */}
+      <View className="flex-1 relative">
+        {/* Main Content Area (fills available width) */}
         <View className="flex-1">
           <ScrollView className="p-4">
             <View className="mb-6">
@@ -199,6 +159,45 @@ export default function HomeScreen() {
             </View>
           </ScrollView>
         </View>
+
+        {/* Sidebar overlay (appears above content, doesn't change layout) */}
+        {isSidebarOpen && (
+          <>
+            {/* Backdrop that closes the sidebar when tapped */}
+            <TouchableOpacity
+              onPress={toggleSidebar}
+              className="absolute inset-0 bg-black/20 z-40"
+            />
+
+            <View className="absolute left-0 top-0 bottom-0 w-64 bg-white border-r border-gray-200 z-50 shadow-lg">
+              <ScrollView className="p-4">
+                <Text className="text-lg font-bold text-gray-800 mb-4">Categories</Text>
+                {categories.map((category) => (
+                  <TouchableOpacity
+                    key={category.id}
+                    className={`flex-row items-center justify-between py-3 px-2 rounded-lg ${
+                      selectedCategory === category.name ? 'bg-blue-50' : ''
+                    }`}
+                    onPress={() => setSelectedCategory(category.name)}
+                  >
+                    <Text
+                      className={`${
+                        selectedCategory === category.name
+                          ? 'text-blue-600 font-semibold'
+                          : 'text-gray-700'
+                      }`}
+                    >
+                      {category.name}
+                    </Text>
+                    <View className="bg-gray-100 rounded-full px-2 py-1">
+                      <Text className="text-gray-600 text-xs">{category.count}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </>
+        )}
       </View>
 
       {/* Video Summary Modal */}
