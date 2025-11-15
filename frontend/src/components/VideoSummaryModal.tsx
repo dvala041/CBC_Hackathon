@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Image, StyleSheet } from 'react-native';
 import { X, Play } from 'lucide-react-native';
 
 interface VideoSummaryModalProps {
@@ -17,6 +17,118 @@ interface VideoSummaryModalProps {
   onOpenOriginal: () => void;
 }
 
+const styles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+    zIndex: 50,
+  },
+  modal: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    height: '75%',
+    padding: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  headerSpacer: {
+    width: 32,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1f2937',
+  },
+  closeButton: {
+    width: 32,
+    alignItems: 'center',
+  },
+  videoInfo: {
+    marginBottom: 16,
+  },
+  videoTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 8,
+  },
+  platformRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  platformBadge: {
+    backgroundColor: '#dbeafe',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginRight: 12,
+  },
+  platformText: {
+    color: '#1e40af',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  dateText: {
+    color: '#6b7280',
+  },
+  thumbnail: {
+    width: '100%',
+    height: 192,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  scrollContent: {
+    flex: 1,
+    marginBottom: 16,
+  },
+  keyPointsTitle: {
+    color: '#1f2937',
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  notesList: {
+    marginLeft: 8,
+  },
+  noteItem: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  noteBullet: {
+    color: '#374151',
+    marginRight: 8,
+  },
+  noteText: {
+    color: '#374151',
+    flex: 1,
+  },
+  actionButton: {
+    backgroundColor: '#3b82f6',
+    borderRadius: 12,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playIcon: {
+    marginRight: 8,
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+});
+
 export default function VideoSummaryModal({
   isVisible,
   onClose,
@@ -28,53 +140,53 @@ export default function VideoSummaryModal({
   }
 
   return (
-    <View className="absolute inset-0 bg-black/50 flex-1 justify-end z-50">
-      <View className="bg-white rounded-t-3xl h-3/4 p-4">
+    <View style={styles.container}>
+      <View style={styles.modal}>
         {/* Header with close button */}
-        <View className="flex-row justify-between items-center mb-4">
-          <View className="w-8" />
-          <Text className="text-lg font-bold text-gray-800">Video Summary</Text>
-          <TouchableOpacity onPress={onClose} className="w-8 items-center">
+        <View style={styles.header}>
+          <View style={styles.headerSpacer} />
+          <Text style={styles.headerTitle}>Video Summary</Text>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <X size={24} color="#757575" />
           </TouchableOpacity>
         </View>
 
         {/* Video info header */}
-        <View className="mb-4">
-          <Text className="text-xl font-bold text-gray-800 mb-2">{video.title}</Text>
+        <View style={styles.videoInfo}>
+          <Text style={styles.videoTitle}>{video.title}</Text>
           
-          <View className="flex-row items-center mb-3">
-            <View className="bg-blue-100 rounded-full px-3 py-1 mr-3">
-              <Text className="text-blue-700 text-sm font-medium">{video.platform}</Text>
+          <View style={styles.platformRow}>
+            <View style={styles.platformBadge}>
+              <Text style={styles.platformText}>{video.platform}</Text>
             </View>
-            <Text className="text-gray-500">{video.date}</Text>
+            <Text style={styles.dateText}>{video.date}</Text>
           </View>
           
           <Image 
             source={{ uri: video.thumbnail }} 
-            className="w-full h-48 rounded-xl mb-4"
+            style={styles.thumbnail}
             resizeMode="cover"
           />
         </View>
 
         {/* Summary content */}
-        <ScrollView className="flex-1 mb-4">
-          <Text className="text-gray-800 font-semibold mb-3">Key Points:</Text>
+        <ScrollView style={styles.scrollContent}>
+          <Text style={styles.keyPointsTitle}>Key Points:</Text>
           
           {video.notes && video.notes.length > 0 ? (
-            <View className="ml-2">
+            <View style={styles.notesList}>
               {video.notes.map((note, index) => (
-                <View key={index} className="flex-row mb-2">
-                  <Text className="text-gray-700 mr-2">•</Text>
-                  <Text className="text-gray-700 flex-1">{note}</Text>
+                <View key={index} style={styles.noteItem}>
+                  <Text style={styles.noteBullet}>•</Text>
+                  <Text style={styles.noteText}>{note}</Text>
                 </View>
               ))}
             </View>
           ) : (
-            <View className="ml-2">
-              <View className="flex-row mb-2">
-                <Text className="text-gray-700 mr-2">•</Text>
-                <Text className="text-gray-700 flex-1">{video.summary || "No summary available"}</Text>
+            <View style={styles.notesList}>
+              <View style={styles.noteItem}>
+                <Text style={styles.noteBullet}>•</Text>
+                <Text style={styles.noteText}>{video.summary || "No summary available"}</Text>
               </View>
             </View>
           )}
@@ -82,11 +194,13 @@ export default function VideoSummaryModal({
 
         {/* Action button */}
         <TouchableOpacity 
-          className="bg-blue-500 rounded-xl py-4 flex-row items-center justify-center"
+          style={styles.actionButton}
           onPress={onOpenOriginal}
         >
-          <Play size={20} color="white" className="mr-2" />
-          <Text className="text-white font-semibold">Open Original Video</Text>
+          <View style={styles.playIcon}>
+            <Play size={20} color="white" />
+          </View>
+          <Text style={styles.buttonText}>Open Original Video</Text>
         </TouchableOpacity>
       </View>
     </View>
