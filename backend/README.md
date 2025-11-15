@@ -31,7 +31,7 @@ Download from https://ffmpeg.org/download.html
 
 1. **Create and activate virtual environment** (if not already done)
 ```bash
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate  # macOS/Linux
 # or
 .\venv\Scripts\activate  # Windows

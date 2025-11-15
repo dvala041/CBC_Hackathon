@@ -2,7 +2,7 @@
 FastAPI backend for transcribing short-form video content.
 Extracts audio from YouTube Shorts, Instagram Reels, TikTok videos, etc.
 """
-
+from supabase_client import supabase
 import os
 import tempfile
 import uuid
@@ -186,14 +186,32 @@ async def transcribe(request: TranscribeRequest):
             
             # Summarize the transcription using Claude 3.5 Sonnet
             summary = summarize_with_claude(transcription)
+            backend_category = "uncategorized"
             
+            try:
+                insert_data = {
+                    "user_id": request.user_id,
+                    "video_url": video_url,
+                    "category": backend_category,
+                    "video_title": video_title,
+                    "duration": duration,
+                    "transcription": transcription,
+                    "summary": summary,
+                }
+                result = supabase.table("videos").insert(insert_data).execute()
+                video_id = result.data[0]["id"] if result.data else None
+                print("Saved to supabase")
+
+            except Exception as db_error:
+                print(f"Warning: could not save to Supabase: {db_error}")
+                video_id = None
+                
             # Clean up: Delete the audio file after successful transcription
             try:
                 final_audio_path.unlink()
                 print(f"Deleted audio file: {final_audio_path}")
             except Exception as cleanup_error:
                 print(f"Warning: Could not delete audio file {final_audio_path}: {cleanup_error}")
-            
             return TranscribeResponse(
                 success=True,
                 message="Audio extracted, transcribed, and summarized successfully",
@@ -201,7 +219,9 @@ async def transcribe(request: TranscribeRequest):
                 video_title=video_title,
                 duration=duration,
                 transcription=transcription,
-                summary=summary
+                summary=summary,
+                video_id=video_id,
+                category=backend_category
             )
             
     except yt_dlp.utils.DownloadError as e:
