@@ -1,6 +1,6 @@
 import { HARDCODED_USER_ID } from './auth';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.48.112.8:8000';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
 
 export interface Video {
   id: string;

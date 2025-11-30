@@ -432,18 +432,23 @@ async def cleanup_audio(filename: str):
         raise HTTPException(status_code=500, detail=f"Error deleting file: {str(e)}")
 from fastapi import Query
 @app.get("/videos", response_model=VideosListResponse)
-async def get_videos(user_id: str = Query(None)):
+async def get_videos(user_id: str = Query(None), category: str = Query(None)):
     """
-    Get all saved videos for a specific user.
+    Get all saved videos for a specific user and/or category.
     Returns formatted data with id, title, platform, date, thumbnail, summary, and notes.
     """
     try:
+        print(f"[DEBUG] Fetching videos for user_id: {user_id}, category: {category}")
         query = supabase.table("videos").select("*")
 
         if user_id:
             query = query.eq("user_id", user_id)
+        
+        if category:
+            query = query.eq("category", category)
 
         result = query.order("created_at", desc=True).execute()
+        print(f"[DEBUG] Query returned {len(result.data)} videos")
 
         # Transform the data to match frontend format
         formatted_videos = []

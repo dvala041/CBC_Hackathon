@@ -29,10 +29,12 @@ class VideoResponse(BaseModel):
     id: str
     title: str
     platform: str
+    category: str  # video category (fitness, cooking, career, etc.)
     date: str  # relative time like "2 days ago"
     thumbnail: Optional[str] = None
     summary: str  # one sentence summary
     notes: List[str]  # detailed list of notes
+    video_url: str  # original video URL
 
 class VideosListResponse(BaseModel):
     """Response model for /videos endpoint"""

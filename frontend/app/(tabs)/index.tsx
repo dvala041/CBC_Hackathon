@@ -3,8 +3,11 @@ import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Alert, Animated
 import { ChevronRight, Menu, Plus, X } from 'lucide-react-native';
 import VideoSummaryModal from '../../components/VideoSummaryModal';
 import { fetchUserVideos, Video, transcribeVideo } from '../../lib/api';
+import { useSharedContent } from '../../hooks/use-shared-content';
+import { useLocalSearchParams } from 'expo-router';
 
 export default function HomeScreen() {
+  const params = useLocalSearchParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedVideo, setSelectedVideo] = useState<any>(null);
@@ -18,6 +21,10 @@ export default function HomeScreen() {
   const [isAddVideoModalVisible, setIsAddVideoModalVisible] = useState(false);
   const [videoUrl, setVideoUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProcessingSharedUrl, setIsProcessingSharedUrl] = useState(false);
+
+  // Handle shared content from other apps
+  const { sharedContent, clearSharedContent } = useSharedContent();
 
   // Animation value for sidebar
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -43,6 +50,105 @@ export default function HomeScreen() {
 
     loadVideos();
   }, []);
+
+  // Handle shared URL from share extension
+  useEffect(() => {
+    const handleSharedUrl = async () => {
+      const sharedUrlParam = params.sharedUrl as string;
+      if (sharedUrlParam) {
+        console.log('Received shared URL from extension:', sharedUrlParam);
+
+        // Show loading overlay
+        setIsProcessingSharedUrl(true);
+
+        // Automatically submit for processing
+        try {
+          await transcribeVideo(sharedUrlParam);
+
+          // Wait a moment before refreshing to let the backend process
+          await new Promise(resolve => setTimeout(resolve, 1500));
+
+          // Refresh the video list
+          try {
+            const fetchedVideos = await fetchUserVideos();
+            setVideos(fetchedVideos);
+          } catch (err) {
+            console.error('Failed to refresh videos:', err);
+          }
+
+          // Hide loading and show success
+          setIsProcessingSharedUrl(false);
+
+          Alert.alert(
+            'Success',
+            'Video submitted for processing! It will appear in your list shortly.',
+            [{ text: 'OK' }]
+          );
+        } catch (error) {
+          console.error('Error submitting video:', error);
+          setIsProcessingSharedUrl(false);
+          Alert.alert('Error', 'Failed to submit video. Please try again.');
+        }
+      }
+    };
+
+    handleSharedUrl();
+  }, [params.sharedUrl]);
+
+  // Handle shared content from clipboard
+  useEffect(() => {
+    if (sharedContent?.webUrl) {
+      console.log('Received shared content:', sharedContent);
+
+      // Show alert to confirm processing
+      Alert.alert(
+        'Video Link Detected',
+        `Do you want to summarize this video?\n\n${sharedContent.webUrl.substring(0, 60)}...`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => clearSharedContent()
+          },
+          {
+            text: 'Yes, Summarize',
+            onPress: async () => {
+              setVideoUrl(sharedContent.webUrl!);
+              clearSharedContent();
+
+              // Automatically submit for processing
+              try {
+                setIsSubmitting(true);
+                await transcribeVideo(sharedContent.webUrl!);
+
+                Alert.alert(
+                  'Success',
+                  'Video submitted for processing! It will appear in your list shortly.',
+                  [{
+                    text: 'OK',
+                    onPress: async () => {
+                      // Refresh the video list
+                      try {
+                        const fetchedVideos = await fetchUserVideos();
+                        setVideos(fetchedVideos);
+                      } catch (err) {
+                        console.error('Failed to refresh videos:', err);
+                      }
+                    }
+                  }]
+                );
+              } catch (error) {
+                console.error('Error submitting video:', error);
+                Alert.alert('Error', 'Failed to submit video. Please try again.');
+              } finally {
+                setIsSubmitting(false);
+              }
+            }
+          }
+        ]
+      );
+    }
+  }, [sharedContent]);
 
   // Handle pull-to-refresh
   const onRefresh = async () => {
@@ -429,6 +535,21 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Processing Shared URL Loading Overlay */}
+      {isProcessingSharedUrl && (
+        <View className="absolute inset-0 bg-black/60 items-center justify-center z-50">
+          <View className="bg-white rounded-3xl p-8 items-center shadow-2xl mx-6">
+            <ActivityIndicator size="large" color="#2196F3" />
+            <Text className="text-gray-800 font-semibold text-lg mt-4">
+              Processing Video
+            </Text>
+            <Text className="text-gray-600 text-center mt-2">
+              Submitting your video for summarization...
+            </Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
